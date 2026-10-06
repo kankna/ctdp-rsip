@@ -588,13 +588,25 @@
 
   function renderSession() {
     var box = $('#session-box'), btn = $('#btn-start-session');
+    var us = $('#unit-select'), ds = $('#dur-select'), uh = $('#unit-lock');
     if (S.session) {
       box.classList.remove('hidden');
       btn.classList.add('hidden');
+      // 兵种在点火那一刻就确认了，这一格中途不许再换
+      if (us) {
+        if (us.querySelector('option[value="' + S.session.unit + '"]')) us.value = S.session.unit;
+        us.disabled = true;
+      }
+      if (ds) { ds.value = String(S.session.dur); ds.disabled = true; }
+      if (uh) uh.innerHTML = '这一格锁死了：<b>' + esc(S.session.unit) + '</b> · '
+        + S.session.dur + ' 分钟 —— 中途换兵种不算数，判决时认的是点火那一刻选的那个。';
       $('#session-hint').textContent = '专注中 · ' + S.session.unit + ' · 目标 ' + S.session.dur + ' 分钟';
     } else {
       box.classList.add('hidden');
       btn.classList.remove('hidden');
+      if (us) us.disabled = false;
+      if (ds) ds.disabled = false;
+      if (uh) uh.innerHTML = '时长和兵种在开始之前随便挑；<b>一旦点火，这一格就锁死了，中途改不了</b>。';
     }
   }
 
@@ -669,8 +681,8 @@
     var acts = [
       { label: '整条链清零', cls: 'danger-ghost', value: 'reset',
         hint: '当前 ' + list.length + ' 块归零，变成一根断柱站进遗迹' },
-      { label: '永久允许「' + esc(what) + '」', cls: 'danger-ghost', value: 'allow',
-        hint: '链条不清零，但「' + esc(what) + '」这一类从此划出规则之外' },
+      { label: '永久允许 · 先写清是哪件事', cls: 'danger-ghost', value: 'allow',
+        hint: '链条不清零。你写下的那件事从此划出规则之外 —— 不是整个「' + esc(what) + '」' },
       { label: '先不判决 · 回去坐着', cls: 'ghost', value: null,
         hint: '什么都不会变。回座位把这一格坐满，再来决定' }
     ];
@@ -686,8 +698,9 @@
           + '护盾一共只有 ' + sh + ' 层。这是储君继承制，不是免死金牌。</p>' : '')
         + '<p><b>整条链清零</b> —— 当前 ' + list.length + ' 块归零。但方块不消失，它们会变成一根断柱，'
         + '站进遗迹里，刻着今天的日期和高度。新柱从第 1 块重开。</p>'
-        + '<p><b>永久允许「' + esc(what) + '」</b> —— 链条不清零，但你放走的是整个「' + esc(what) + '」类别，'
-        + '它从此被正式划出规则之外，并进判例簿、如实降低链条的约束力。</p>'
+        + '<p><b>永久允许</b> —— 链条不清零。但下一步你要写下<b>放走的到底是哪一件具体的事</b>：'
+        + '「今晚睡前躺着刷手机」比「' + esc(what) + '」有用得多。写下的那句进判例簿，'
+        + '从此划出规则之外的是这件事，不是整个兵种。</p>'
         + '<div class="warnbox">' + (sh > 0 ? '三个出口都不舒服' : '两个出口都不舒服')
         + '，这就是这个协议的全部设计。</div>',
       actions: acts
@@ -708,15 +721,46 @@
           '用掉一层护盾 —— 柱保住了，第 ' + (idx + 1) + ' 块封了一道裂', '护盾', true);
         toast('护盾碎了。柱子还在，那道裂会一直留着。', 'warn', 3000);
       } else if (v === 'allow') {
-        S.verdicts = S.verdicts || [];
-        S.verdicts.push({ t: Date.now(), kind: 'allow', what: what });
-        // 永久允许 -> 该行为被划出规则，链条约束力下降一档
-        S.allowance = (S.allowance || 0) + 1;
-        S.session = null;
-        save(); renderChain(); renderSession(); renderVerdicts();
-        logTo('#main-log', clock(Date.now()), '判决：永久允许「' + what + '」', '判例', true);
-        toast('已记入判例簿，约束力下调一档', 'bad');
+        askAllow(what);
       }
+    });
+  }
+
+  /* 永久允许：先把"放走的是哪件事"写下来，再落账 */
+  function askAllow(unitWhat) {
+    var p = modal({
+      title: '永久允许 · 是哪件事',
+      body: '<p>你要放走的是<b>哪一件具体的事</b>？</p>'
+        + '<p>写「今晚睡前躺着刷手机」，别写「' + esc(unitWhat) + '」—— '
+        + '兵种是一整类事，而这一格真正翻掉的通常只是其中一件。'
+        + '你写下的这句会进判例簿，以后划出规则之外的就是它。</p>'
+        + '<label class="fld"><span>放走的是</span>'
+        + '<input type="text" id="allow-input" maxlength="30" placeholder="今晚睡前躺着刷手机"></label>'
+        + '<div class="warnbox">留空不给过 —— 规则里没有「这次算了」，也不接受含糊。</div>',
+      actions: [
+        { label: '就记这句 · 划出规则', cls: 'danger-ghost', value: 'ok',
+          hint: '链条不清零，「' + esc(unitWhat) + '」的约束力下调一档' },
+        { label: '先不判决 · 回去坐着', cls: 'ghost', value: null, hint: '什么都不会变' }
+      ]
+    });
+    var inp = $('#allow-input'), okBtn = $('#modal-actions').firstChild;
+    if (inp && okBtn) {
+      okBtn.disabled = true;
+      inp.addEventListener('input', function () { okBtn.disabled = !inp.value.trim(); });
+      setTimeout(function () { inp.focus(); }, 60);
+    }
+    p.then(function (r) {
+      if (r !== 'ok' || !inp) return;
+      var txt = (inp.value || '').trim().slice(0, 30);
+      if (!txt) { toast('总得写清放走的是哪件事', 'warn'); return; }
+      S.verdicts = S.verdicts || [];
+      S.verdicts.push({ t: Date.now(), kind: 'allow', what: txt, unit: unitWhat });
+      // 永久允许 -> 这件事被划出规则，链条约束力下降一档
+      S.allowance = (S.allowance || 0) + 1;
+      S.session = null;
+      save(); renderChain(); renderSession(); renderVerdicts();
+      logTo('#main-log', clock(Date.now()), '判决：永久允许「' + txt + '」（' + unitWhat + '）', '判例', true);
+      toast('已记入判例簿：放走的是「' + txt + '」', 'bad', 3000);
     });
   }
 
@@ -754,9 +798,12 @@
     (S.verdicts || []).slice().reverse().forEach(function (v) {
       var el = document.createElement('div');
       el.className = 'log-item danger';
+      var tail = v.kind === 'allow'
+        ? (v.unit && v.unit !== v.what ? '豁免 · ' + v.unit : '豁免')
+        : '熄灭';
       el.innerHTML = '<b>' + esc(dstr(new Date(v.t))) + '</b>'
         + '<span class="lt">' + esc(v.kind === 'allow' ? '永久允许：' + v.what : '递归熄灭：' + v.what) + '</span>'
-        + '<span class="tag">' + esc(v.kind === 'allow' ? '豁免' : '熄灭') + '</span>';
+        + '<span class="tag">' + esc(tail) + '</span>';
       box.appendChild(el);
     });
     emptyTo(box, '还没有判例。这意味着你至今没有开过任何一个后门。');
