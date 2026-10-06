@@ -102,7 +102,8 @@
       (opts.actions || []).forEach(function (a) {
         var b = document.createElement('button');
         b.className = 'btn ' + (a.cls || '');
-        b.textContent = a.label;
+        b.innerHTML = '<span class="bt">' + a.label + '</span>'
+          + (a.hint ? '<span class="bh">' + a.hint + '</span>' : '');
         b.addEventListener('click', function () { closeModal(a.value); });
         acts.appendChild(b);
       });
@@ -629,7 +630,10 @@
         title: '这一格太短了',
         body: '<p>刚过了 ' + sec + ' 秒。神圣座位要的是「以最好的状态完成一次专注」，不是坐一下就记一个节点。</p>'
           + '<p class="warnbox">要么接着坐满，要么按<b>下必为例</b>当场判决：清零，或永久允许。</p>',
-        actions: [{ label: '接着坐', value: null, cls: 'ghost' }, { label: '去判决', value: 'judge', cls: 'danger-ghost' }]
+        actions: [
+          { label: '接着坐', cls: 'ghost', value: null, hint: '计时不停，把这一格坐满再落节点' },
+          { label: '去判决', cls: 'danger-ghost', value: 'judge', hint: '进入下必为例 —— 只有清零或永久允许两个出口' }
+        ]
       }).then(function (v) { if (v === 'judge') violate(); });
       return;
     }
@@ -659,21 +663,31 @@
     var list = chainNodes();
     if (!list.length && !S.session) { toast('链条还是空的，先攒几个节点', 'warn'); return; }
     var sh = shieldAvail();
+    // 被判违规的到底是哪一类事：取这一格开始时你自己选的那个兵种，不再用一句悬空的「该行为」
+    var what = (S.session && S.session.unit ? String(S.session.unit) : '').trim()
+      || (S.session ? '未标注的这一格' : '链条中断');
     var acts = [
-      { label: '整条链清零', value: 'reset', cls: 'danger-ghost' },
-      { label: '永久允许该行为', value: 'allow', cls: 'stretch' },
-      { label: '先不判决，回去坐着', value: null, cls: 'ghost' }
+      { label: '整条链清零', cls: 'danger-ghost', value: 'reset',
+        hint: '当前 ' + list.length + ' 块归零，变成一根断柱站进遗迹' },
+      { label: '永久允许「' + esc(what) + '」', cls: 'danger-ghost', value: 'allow',
+        hint: '链条不清零，但「' + esc(what) + '」这一类从此划出规则之外' },
+      { label: '先不判决 · 回去坐着', cls: 'ghost', value: null,
+        hint: '什么都不会变。回座位把这一格坐满，再来决定' }
     ];
-    if (sh > 0) acts.splice(1, 0, { label: '用掉一层护盾 · 保住这根柱', value: 'shield', cls: 'ok' });
+    if (sh > 0) acts.unshift({
+      label: '用掉一层护盾 · 保住这根柱', cls: 'ok', value: 'shield',
+      hint: '护盾只剩 ' + sh + ' 层；保住的那段会永久封一道红封条'
+    });
     modal({
       title: '下必为例 · 违规判决',
-      body: '<p>规则里没有「这次算了」这一项。你现在必须做个了断，并接受它的后果：</p>'
+      body: '<p>这一格开始时你选的兵种是 <b>' + esc(what) + '</b>。'
+        + '现在要定的就是：这一类事以后还算不算数 —— 规则里没有「这次算了」这一项。</p>'
+        + (sh > 0 ? '<p><b>用掉一层护盾</b> —— 柱保住了，但那段会永久封一道红封条。'
+          + '护盾一共只有 ' + sh + ' 层。这是储君继承制，不是免死金牌。</p>' : '')
         + '<p><b>整条链清零</b> —— 当前 ' + list.length + ' 块归零。但方块不消失，它们会变成一根断柱，'
         + '站进遗迹里，刻着今天的日期和高度。新柱从第 1 块重开。</p>'
-        + (sh > 0 ? '<p><b>用掉一层护盾</b> —— 柱保住了，但那一段会永久封一道红封条。'
-          + '护盾一共只有 ' + sh + ' 层，用一层少一层。这是储君继承制，不是免死金牌。</p>' : '')
-        + '<p><b>永久允许该行为</b> —— 链条不清零，但这一类行为从此被正式划出规则之外。'
-        + '它会进判例簿，如实降低链条的约束力。</p>'
+        + '<p><b>永久允许「' + esc(what) + '」</b> —— 链条不清零，但你放走的是整个「' + esc(what) + '」类别，'
+        + '它从此被正式划出规则之外，并进判例簿、如实降低链条的约束力。</p>'
         + '<div class="warnbox">' + (sh > 0 ? '三个出口都不舒服' : '两个出口都不舒服')
         + '，这就是这个协议的全部设计。</div>',
       actions: acts
@@ -694,7 +708,6 @@
           '用掉一层护盾 —— 柱保住了，第 ' + (idx + 1) + ' 块封了一道裂', '护盾', true);
         toast('护盾碎了。柱子还在，那道裂会一直留着。', 'warn', 3000);
       } else if (v === 'allow') {
-        var what = S.session ? S.session.unit : '这次中断';
         S.verdicts = S.verdicts || [];
         S.verdicts.push({ t: Date.now(), kind: 'allow', what: what });
         // 永久允许 -> 该行为被划出规则，链条约束力下降一档

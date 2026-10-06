@@ -1,10 +1,3 @@
-_sel.txt
-_clean.py
-_probe.js
-_test.html
+# 本地临时探针/调试脚本，不进仓库
+_*
 model-test.js
-_m.html
-_set.html
-_scroll.html
-_mtest.js
-_css.js
