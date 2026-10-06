@@ -1284,26 +1284,31 @@
   });
 
   /* ==================== 十、心跳 ==================== */
+  function setText(sel, txt) {
+    var el = $(sel);
+    if (el && el.textContent !== txt) el.textContent = txt;
+  }
+
   function tick() {
     var now = Date.now();
 
     if (S.session) {
       var used = Math.floor((now - S.session.start) / 1000);
-      $('#session-timer').textContent = hhmmss(used);
+      setText('#session-timer', hhmmss(used));
       var left = S.session.dur * 60 - used;
       if (left > 0) {
-        $('#session-hint').textContent = '专注中 · ' + S.session.unit
-          + ' · 还差 ' + hhmm(Math.max(0, left)) + ' 到 ' + S.session.dur + ' 分钟';
+        setText('#session-hint', '专注中 · ' + S.session.unit
+          + ' · 还差 ' + hhmm(Math.max(0, left)) + ' 到 ' + S.session.dur + ' 分钟');
       } else if (!S.session.over) {
         S.session.over = true; save();
-        $('#session-hint').textContent = '已经坐满 ' + S.session.dur + ' 分钟 —— 可以点「完成」记节点了。';
+        setText('#session-hint', '已经坐满 ' + S.session.dur + ' 分钟 —— 可以点「完成」记节点了。');
         toast('时间到：这一格已经撑满', 'warn');
       }
     }
 
     if (S.auxSession) {
       var rest = Math.max(0, Math.floor((S.auxSession.until - now) / 1000));
-      $('#aux-timer').textContent = hhmm(rest);
+      setText('#aux-timer', hhmm(rest));
       if (rest <= 0) auxFail(true);
     }
 
@@ -1351,10 +1356,10 @@
         v.innerHTML = '<b>' + esc(levelOf(need).name) + ' 还没解锁</b>'
           + '<span>主链撑到 #' + levelOf(need).at + ' 就开这一格 —— 现在是 #' + best() + '</span>';
         el.insertBefore(v, el.firstChild);
-        el.classList.add('blk');
+        el.classList.add('lv-box');
       } else if (ok && veil) {
         el.removeChild(veil);
-        el.classList.remove('blk');
+        el.classList.remove('lv-box');
       }
     });
   }

@@ -41,8 +41,7 @@ input,select,textarea{background:var(--sunk)}
 .wrap{max-width:1080px; margin:0 auto; padding:0 20px}
 header.top{
   position:sticky; top:0; z-index:50;
-  background:color-mix(in srgb,var(--bg) 88%,transparent);
-  backdrop-filter:blur(14px); border-bottom:1px solid var(--line2);
+  background:var(--bg); border-bottom:1px solid var(--line2);
 }
 .top-in{display:flex; align-items:center; gap:12px; height:60px}
 .brand{display:flex; align-items:center; gap:10px; margin-right:auto; min-width:0}
@@ -286,7 +285,7 @@ canvas{width:100%; display:block; border-radius:var(--rs); background:var(--sunk
 /* ---------- 弹层与提示 ---------- */
 .modal-mask{
   position:fixed; inset:0; z-index:200; display:grid; place-items:center; padding:18px;
-  background:rgba(0,0,0,.55); backdrop-filter:blur(3px);
+  background:rgba(0,0,0,.72);
 }
 .modal{
   background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
@@ -342,12 +341,16 @@ canvas{width:100%; display:block; border-radius:var(--rs); background:var(--sunk
 
 /* ==================== 未解锁 ==================== */
 [data-lv].locked{position:relative}
-[data-lv].blk.locked > *:not(.lock-veil){
-  filter:blur(4px) saturate(.3); opacity:.3;
+[data-lv].lv-box.locked{
+  min-height:96px;
+}
+/* 手机上 blur 滤镜是滚动卡顿的主因；锁罩本身已经压得很暗，底下糊不糊根本看不出来 */
+[data-lv].lv-box.locked > *:not(.lock-veil){
+  opacity:.22;
   pointer-events:none; user-select:none;
 }
-[data-lv].locked:not(.blk):not(.tab){
-  filter:blur(3.5px) saturate(.35); opacity:.5;
+[data-lv].locked:not(.lv-box):not(.tab){
+  opacity:.45;
   pointer-events:none; user-select:none;
 }
 .lock-veil{
