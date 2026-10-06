@@ -148,7 +148,7 @@
     }
     $$('.tab').forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === tab); });
     $$('.page').forEach(function (p) { p.classList.toggle('on', p.id === 'page-' + tab); });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
     if (tab === 'model' && window.__drawChart) window.__drawChart();
   }
   $$('.tab').forEach(function (t) {
