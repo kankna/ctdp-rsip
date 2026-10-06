@@ -44,7 +44,8 @@
   function blank() {
     return {
       v: 1, theme: 'dark', seat: '', mainChain: [], best: 0, aux: [], verdicts: [],
-      session: null, auxSession: null, nodes: [], lastAdd: '', freeze: null, wins: {}
+      session: null, auxSession: null, nodes: [], lastAdd: '', freeze: null, wins: {},
+      pillars: [], pads: [], pillar: 0, shieldUsed: 0, scars: []
     };
   }
   var S = blank();
@@ -119,9 +120,32 @@
     if (e.key === 'Escape' && !$('#modal-mask').classList.contains('hidden')) closeModal(null);
   });
 
+  /* ==================== 解锁阶梯 ==================== */
+  // 唯一的驱动轴是主链的历史最好成绩。台阶只上不下 —— 断链归零也不会把已开的格子收回去。
+  var LEVELS = [
+    { lv: 1, at: 0, name: '点火', hint: '神圣座位 · 主链 · 判决', why: '起点就给全一个闭环：锁定标志物、专注、完成后把节点记进链条。违规只有两个出口 —— 清零，或永久允许。' },
+    { lv: 2, at: 1, name: '响指', hint: '辅助链 · 15 分钟预约', why: '主链跑通一次了，这时候才给你那个几乎零成本的启动信号：先只承诺十五分钟后开始。' },
+    { lv: 3, at: 3, name: '国策树', hint: '第二代协议 · RSIP', why: '第一代跑通了，才轮到去改边界条件 —— 找到有效干预节点，把定式组织成一棵会自己修剪的树。' },
+    { lv: 4, at: 6, name: '隔舱与复盘', hint: '水密隔舱 · 赢麻了', why: '链条长到怕断的时候，容错和复盘才有意义：只冻结受影响的隔舱，别让一次意外掀掉整棵树。' }
+  ];
+
+  function best() { return S.best || 0; }
+  function unlocked() {
+    var b = best(), lv = 1;
+    LEVELS.forEach(function (L) { if (b >= L.at) lv = L.lv; });
+    return lv;
+  }
+  function levelOf(n) { return LEVELS[n - 1] || LEVELS[0]; }
+
   /* ==================== 导航 ==================== */
   var PAGE_TITLES = {};
   function go(tab) {
+    var tb = $('.tab[data-tab="' + tab + '"]');
+    if (tb && tb.classList.contains('locked')) {
+      var need = parseInt(tb.getAttribute('data-lv'), 10), L = levelOf(need);
+      toast('还锁着 —— 主链撑到 #' + L.at + ' 才开「' + L.name + '」', 'warn', 2800);
+      return;
+    }
     $$('.tab').forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === tab); });
     $$('.page').forEach(function (p) { p.classList.toggle('on', p.id === 'page-' + tab); });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -361,7 +385,205 @@
     $('#stat-best').textContent = S.best || 0;
     $('#stat-today').textContent = todays;
     $('#stat-total').textContent = S.total || 0;
+    renderPillar(); renderRelief(); renderShield(); renderMini();
   }
+
+  /* ==================== 二·B、链柱（创世纪方块） ==================== */
+  // 方块不是收藏品，是承重块。驱动力来自"会失去"，不是"能得到"。
+  var SHOW_MAX = 60;      // 主视图永远只留当前这一段，更早的封成地层
+  var PAD_MAX = 14;       // 垫块最多在柱底显示这么多层
+
+  function curPillar() { return S.pillar || 0; }
+  function pillarNodes(p) {
+    if (p === curPillar()) return chainNodes();
+    var hit = (S.pillars || []).filter(function (x) { return x.p === p; })[0];
+    return hit ? (hit.blocks || []) : [];
+  }
+  function pillarPads(p) {
+    return (S.pads || []).filter(function (x) { return (x.p || 0) === p; });
+  }
+  function tierOf(i) {
+    return i >= 30 ? ' obsidian' : (i >= 7 ? ' deep' : '');
+  }
+  function daysOfChain() {
+    var d = {};
+    chainNodes().forEach(function (n) { d[dstr(new Date(n.t))] = 1; });
+    return Object.keys(d).length;
+  }
+  // 护盾按"有落块的天数"攒，一天多块不加进度 —— 稀缺是为了让柱子有分量
+  function shieldHave() { return Math.min(2, Math.floor(daysOfChain() / 7)); }
+  function shieldAvail() { return Math.max(0, shieldHave() - (S.shieldUsed || 0)); }
+  function scarAt(p, i) {
+    return (S.scars || []).some(function (s) { return s.p === p && s.i === i; });
+  }
+  function minsOf(n) { return Math.max(1, Math.round((n.sec || (n.dur || 0) * 60) / 60)); }
+
+  function renderPillar() {
+    var box = $('#pillar');
+    if (!box) return;
+    var p = curPillar(), list = pillarNodes(p), pads = pillarPads(p);
+    box.innerHTML = '';
+
+    pads.slice(-PAD_MAX).forEach(function () {
+      var d = document.createElement('div');
+      d.className = 'blk pad';
+      d.title = '辅助链的垫块 —— 响指换来的，不单独计数';
+      box.appendChild(d);
+    });
+
+    if (!list.length) {
+      for (var g = 0; g < 3; g++) {
+        var gh = document.createElement('div');
+        gh.className = 'blk ghost';
+        box.appendChild(gh);
+      }
+    } else {
+      var hide = Math.max(0, list.length - SHOW_MAX);
+      if (hide > 0) {
+        var st = document.createElement('div');
+        st.className = 'blk stratum';
+        st.title = '更早的 ' + hide + ' 块已封成地层 —— 想看得导出记录';
+        box.appendChild(st);
+      }
+      list.forEach(function (n, i) {
+        if (i < hide) return;
+        var d = document.createElement('div');
+        d.className = 'blk' + tierOf(i) + ((i + 1) % 10 === 0 ? ' tick' : '')
+          + (scarAt(p, i) ? ' scar' : '');
+        d.setAttribute('data-i', i);
+        d.setAttribute('data-p', p);
+        d.title = '第 ' + (i + 1) + ' 块 · ' + dstr(new Date(n.t))
+          + (n.m ? ' · 「' + n.m + '」' : '');
+        box.appendChild(d);
+      });
+      var top = box.lastChild;
+      if (top && top.classList) top.classList.add('new');
+    }
+    renderStageNote(list.length, p);
+  }
+
+  function renderStageNote(len, p) {
+    var note = $('#stage-note');
+    if (!note) return;
+    if (!len) {
+      note.innerHTML = '柱子还没开始长。<b>第一块最重</b> —— 它证明这套东西能转起来。';
+    } else if (len === 1) {
+      note.innerHTML = '第 1 块落地了。<b>从现在起，你有的可以失去。</b>';
+    } else if (shieldAvail() > 0) {
+      note.innerHTML = '柱高 <b>' + len + '</b>。你手上还有护盾 —— 但那道裂会一直留着，别当成免死金牌。';
+    } else {
+      note.innerHTML = '柱高 <b>' + len + '</b>，越往上越不敢断。清零的时候方块不会消失 —— 它们会站进下面的遗迹里。';
+    }
+  }
+
+  function renderRelief() {
+    var box = $('#relief');
+    if (!box) return;
+    var ps = (S.pillars || []);
+    if (!ps.length) {
+      box.innerHTML = '<span class="none">还没有断过。这是你的第一根柱 —— 它现在还在长。</span>';
+      return;
+    }
+    box.innerHTML = '';
+    ps.slice(-16).forEach(function (x) {
+      var h = Math.max(12, Math.min(88, (x.n || 0) * 7));
+      var el = document.createElement('div');
+      el.className = 'ruin';
+      el.title = (x.at || '') + ' 断 · 当时高 ' + (x.n || 0) + ' 块 · ' + (x.reason || '');
+      el.innerHTML = '<div class="col" style="height:' + h + 'px"></div>'
+        + '<b>' + (x.n || 0) + '</b>'
+        + '<span>' + esc(String(x.at || '').slice(5)) + '</span>';
+      box.appendChild(el);
+    });
+  }
+
+  function renderShield() {
+    var el = $('#shield-slot');
+    if (!el) return;
+    var n = shieldAvail(), days = daysOfChain();
+    if (n > 0) {
+      var s = '', i;
+      for (i = 0; i < n; i++) s += '◆ ';
+      el.className = 'shield-on';
+      el.innerHTML = '护盾 ' + s;
+    } else {
+      el.className = 'shield-off';
+      el.innerHTML = days < 14
+        ? '护盾 —（再连 ' + (7 - (days % 7)) + ' 天攒 1 层）'
+        : '护盾 —（本柱已用尽）';
+    }
+  }
+
+  function renderMini() {
+    var box = $('#ov-mini');
+    var cap = $('#ov-mini-cap'), rb = $('#ov-ruins'), rc = $('#ov-ruins-cap');
+    if (box) {
+      var list = pillarNodes(curPillar()), pads = pillarPads(curPillar());
+      box.innerHTML = '';
+      pads.slice(-8).forEach(function () {
+        var d = document.createElement('div'); d.className = 'mini-blk pad'; box.appendChild(d);
+      });
+      var hide = Math.max(0, list.length - 40);
+      list.forEach(function (n, i) {
+        if (i < hide) return;
+        var d = document.createElement('div');
+        d.className = 'mini-blk' + tierOf(i) + ((i + 1) % 10 === 0 ? ' tick' : '');
+        box.appendChild(d);
+      });
+      if (!list.length && !pads.length) box.innerHTML = '<div class="mini-blk"></div>';
+      if (cap) cap.textContent = '当前柱 · ' + list.length + ' 块';
+    }
+    if (rb) {
+      rb.innerHTML = '';
+      var ps = (S.pillars || []).slice(-12);
+      ps.forEach(function (x) {
+        var d = document.createElement('div');
+        d.className = 'mini-ruin';
+        d.style.height = Math.max(8, Math.min(56, (x.n || 0) * 5)) + 'px';
+        d.title = (x.at || '') + ' 断 · 高 ' + (x.n || 0);
+        rb.appendChild(d);
+      });
+      if (!ps.length) rb.innerHTML = '<span class="mini-cap">—</span>';
+      if (rc) rc.textContent = '遗迹 · ' + (S.pillars || []).length + ' 根断柱';
+    }
+  }
+
+  /* 点一块看铭文 */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    while (t && t !== document.body && !(t.className && String(t.className).indexOf('blk') === 0)) t = t.parentNode;
+    if (!t || t === document.body) return;
+    var si = t.getAttribute && t.getAttribute('data-i');
+    if (si == null) return;
+    var p = parseInt(t.getAttribute('data-p'), 10) || 0;
+    var i = parseInt(si, 10);
+    var n = pillarNodes(p)[i];
+    if (!n) return;
+    var box = $('#epitaph');
+    if (!box) return;
+    var last = (p === curPillar() && i === pillarNodes(p).length - 1);
+    box.classList.remove('hidden');
+    box.innerHTML = '<b>第 ' + (i + 1) + ' 块</b>'
+      + (n.m ? ' · 铭文「' + esc(n.m) + '」' : ' · 还没有刻字')
+      + '<br><span class="mono">' + dstr(new Date(n.t)) + ' ' + clock(n.t) + '</span>'
+      + ' · ' + esc(n.unit || '未记兵种') + ' · ' + minsOf(n) + ' 分钟'
+      + (scarAt(p, i) ? '<br><span style="color:var(--danger)">这一段是拿护盾换下来的 —— 那道裂永远留着。</span>' : '')
+      + (last ? '<br><span class="void">这是柱顶那块。再落一块，它就不在最上面了。</span>' : '');
+    var cr = $('#carve-row');
+    if (cr) { carveIdx = i; $('#carve-input').value = n.m || ''; cr.classList.remove('hidden'); }
+  });
+
+  var carveIdx = -1;
+  $('#btn-carve').addEventListener('click', function () {
+    var v = ($('#carve-input').value || '').trim().slice(0, 4);
+    var list = pillarNodes(curPillar());
+    if (carveIdx < 0 || !list[carveIdx]) { toast('先落一块，再给它刻字', 'warn'); return; }
+    list[carveIdx].m = v;
+    save();
+    $('#carve-row').classList.add('hidden');
+    renderChain();
+    toast(v ? '刻上了：「' + v + '」' : '没刻字 —— 这块只记日期。');
+  });
 
   function renderSession() {
     var box = $('#session-box'), btn = $('#btn-start-session');
@@ -411,13 +633,23 @@
       }).then(function (v) { if (v === 'judge') violate(); });
       return;
     }
-    chainNodes().push({ t: Date.now(), unit: s.unit, dur: s.dur, sec: sec });
+    var before = unlocked();
+    var todaysBefore = chainNodes().filter(function (n) {
+      return dstr(new Date(n.t)) === todayStr();
+    }).length;
+    chainNodes().push({ t: Date.now(), unit: s.unit, dur: s.dur, sec: sec, p: curPillar(), m: '' });
     S.total = (S.total || 0) + 1;
     if (chainNodes().length > (S.best || 0)) S.best = chainNodes().length;
     endSession();
-    renderChain();
+    renderChain(); renderLadder();
     logTo('#main-log', clock(Date.now()), '最好的状态 · 完成 ' + hhmm(s.sec) + '（' + s.unit + '）', '#' + chainNodes().length);
-    toast('节点 #' + chainNodes().length + ' 已记入链条');
+    carveIdx = chainNodes().length - 1;
+    $('#carve-input').value = '';
+    $('#carve-row').classList.remove('hidden');
+    var after = unlocked();
+    if (after > before) celebrate(after);
+    else if (todaysBefore > 0) toast('第 ' + chainNodes().length + ' 块落地。今天已经落过了 —— 它不加护盾进度。', 'warn', 2600);
+    else toast('第 ' + chainNodes().length + ' 块落地 —— 顺手给它刻两个字');
   });
 
   $('#btn-violate').addEventListener('click', function () { violate(); });
@@ -426,27 +658,41 @@
   function violate() {
     var list = chainNodes();
     if (!list.length && !S.session) { toast('链条还是空的，先攒几个节点', 'warn'); return; }
+    var sh = shieldAvail();
+    var acts = [
+      { label: '整条链清零', value: 'reset', cls: 'danger-ghost' },
+      { label: '永久允许该行为', value: 'allow', cls: 'stretch' },
+      { label: '先不判决，回去坐着', value: null, cls: 'ghost' }
+    ];
+    if (sh > 0) acts.splice(1, 0, { label: '用掉一层护盾 · 保住这根柱', value: 'shield', cls: 'ok' });
     modal({
       title: '下必为例 · 违规判决',
-      body: '<p>规则里没有「这次算了」这一项。你现在必须二选一，并接受它的后果：</p>'
-        + '<p><b>整条链清零</b> —— 当前 ' + list.length + ' 个节点归零，但规则仍然完整地立着，'
-        + '你明天可以重新数 #1。</p>'
+      body: '<p>规则里没有「这次算了」这一项。你现在必须做个了断，并接受它的后果：</p>'
+        + '<p><b>整条链清零</b> —— 当前 ' + list.length + ' 块归零。但方块不消失，它们会变成一根断柱，'
+        + '站进遗迹里，刻着今天的日期和高度。新柱从第 1 块重开。</p>'
+        + (sh > 0 ? '<p><b>用掉一层护盾</b> —— 柱保住了，但那一段会永久封一道红封条。'
+          + '护盾一共只有 ' + sh + ' 层，用一层少一层。这是储君继承制，不是免死金牌。</p>' : '')
         + '<p><b>永久允许该行为</b> —— 链条不清零，但这一类行为从此被正式划出规则之外。'
         + '它会进判例簿，如实降低链条的约束力。</p>'
-        + '<div class="warnbox">两个出口都不舒服，这就是这个协议的全部设计。</div>',
-      actions: [
-        { label: '整条链清零', value: 'reset', cls: 'danger-ghost' },
-        { label: '永久允许该行为', value: 'allow', cls: 'stretch' },
-        { label: '先不判决，回去坐着', value: null, cls: 'ghost' }
-      ]
+        + '<div class="warnbox">' + (sh > 0 ? '三个出口都不舒服' : '两个出口都不舒服')
+        + '，这就是这个协议的全部设计。</div>',
+      actions: acts
     }).then(function (v) {
       if (v === 'reset') {
-        var n = list.length;
-        S.mainChain = [];
+        resetChain();
+      } else if (v === 'shield') {
+        var idx = chainNodes().length - 1;
+        S.scars = S.scars || [];
+        S.scars.push({
+          p: curPillar(), i: idx, at: todayStr(),
+          why: (S.session ? S.session.unit : '中断')
+        });
+        S.shieldUsed = (S.shieldUsed || 0) + 1;
         S.session = null;
         save(); renderChain(); renderSession();
-        logTo('#main-log', clock(Date.now()), '判决：整条链清零（原有 ' + n + ' 个节点作废）', '清零', true);
-        toast('链条已归零。明天从 #1 重新数。', 'warn');
+        logTo('#main-log', clock(Date.now()),
+          '用掉一层护盾 —— 柱保住了，第 ' + (idx + 1) + ' 块封了一道裂', '护盾', true);
+        toast('护盾碎了。柱子还在，那道裂会一直留着。', 'warn', 3000);
       } else if (v === 'allow') {
         var what = S.session ? S.session.unit : '这次中断';
         S.verdicts = S.verdicts || [];
@@ -459,6 +705,33 @@
         toast('已记入判例簿，约束力下调一档', 'bad');
       }
     });
+  }
+
+  /* 清零：封柱，不删块。断柱永存，新柱另起。 */
+  function resetChain() {
+    var list = chainNodes(), n = list.length;
+    if (n > 0) {
+      S.pillars = S.pillars || [];
+      S.pillars.push({
+        p: curPillar(), n: n, at: todayStr(),
+        reason: '下必为例 · 清零', blocks: list.slice()
+      });
+      S.mainChain = [];
+      S.pillar = curPillar() + 1;
+      S.shieldUsed = 0;
+      S.session = null;
+      save();
+      $('#carve-row').classList.add('hidden');
+      $('#epitaph').classList.add('hidden');
+      renderChain(); renderSession();
+      logTo('#main-log', clock(Date.now()),
+        '判决：整条链清零 —— ' + n + ' 块封存为第 ' + curPillar() + ' 根断柱', '清零', true);
+      toast('柱断了。方块没消失，它们在下面的遗迹里。新柱从第 1 块重开。', 'warn', 3600);
+    } else {
+      S.session = null;
+      save(); renderChain(); renderSession();
+      toast('链条本来就是空的 —— 但这次违规记下了。');
+    }
   }
 
   /* ==================== 四、判例簿 ==================== */
@@ -496,10 +769,12 @@
     if (!S.auxSession) return;
     S.aux = S.aux || [];
     S.aux.push({ t: Date.now(), ok: true, sec: Math.floor((Date.now() - S.auxSession.start) / 1000) });
+    S.pads = S.pads || [];
+    S.pads.push({ t: Date.now(), p: curPillar() });
     S.auxSession = null;
-    save(); renderAux();
+    save(); renderAux(); renderChain();
     logTo('#aux-log', clock(Date.now()), '已触发标志 —— 现在去开主链', '成功');
-    toast('辅助链走通。接着点「触发标志 · 开始一次专注」。');
+    toast('辅助链走通，柱底垫了一块。接着点「触发标志 · 开始一次专注」。');
   }
   function auxFail(auto) {
     if (!S.auxSession) return;
@@ -1039,11 +1314,73 @@
     }
   }
 
+  /* ==================== 解锁：阶梯与上锁 ==================== */
+  function renderLadder() {
+    var box = $('#ladder');
+    if (!box) return;
+    var b = best(), lv = unlocked();
+    box.innerHTML = '';
+    LEVELS.forEach(function (L) {
+      var on = lv >= L.lv, cur = (L.lv === lv + 1);
+      var el = document.createElement('div');
+      el.className = 'step' + (on ? ' on' : '') + (cur ? ' cur' : '');
+      el.innerHTML = '<span class="sn">' + L.lv + '</span>'
+        + '<b class="sm">' + esc(L.name) + '</b>'
+        + '<span class="sh">' + esc(L.hint) + '</span>'
+        + '<span class="sq">' + (on
+          ? '已开启'
+          : (L.at <= 0 ? '' : '还差 #' + Math.max(0, L.at - b) + '（需 #' + L.at + '）')) + '</span>';
+      box.appendChild(el);
+    });
+  }
+
+  function applyLocks() {
+    var lv = unlocked();
+    Array.prototype.slice.call(document.querySelectorAll('[data-lv]')).forEach(function (el) {
+      var need = parseInt(el.getAttribute('data-lv'), 10);
+      if (!need) return;
+      var ok = lv >= need, isTab = el.classList.contains('tab');
+      var isBox = !isTab && el.tagName !== 'SECTION' && el.tagName !== 'LI' && el.tagName !== 'P';
+      el.classList.toggle('locked', !ok);
+      el.setAttribute('aria-disabled', String(!ok));
+      if (isTab) return;
+      var veil = el.querySelector(':scope > .lock-veil');
+      if (!ok && isBox && !veil) {
+        var v = document.createElement('div');
+        v.className = 'lock-veil';
+        v.innerHTML = '<b>' + esc(levelOf(need).name) + ' 还没解锁</b>'
+          + '<span>主链撑到 #' + levelOf(need).at + ' 就开这一格 —— 现在是 #' + best() + '</span>';
+        el.insertBefore(v, el.firstChild);
+        el.classList.add('blk');
+      } else if (ok && veil) {
+        el.removeChild(veil);
+        el.classList.remove('blk');
+      }
+    });
+  }
+
+  function celebrate(lv) {
+    var L = levelOf(lv);
+    renderLadder(); applyLocks();
+    toast('解锁 · ' + L.name, 'warn', 3200);
+    var goLv = lv === 3 ? '去国策页看看' : (lv === 4 ? '去复盘看看' : '好');
+    modal({
+      title: '解锁 · ' + L.name,
+      body: '<p>' + esc(L.why) + '</p>'
+        + '<p class="note">这一格开了：<b>' + esc(L.hint) + '</b>。</p>'
+        + '<p class="hint">原理页里对应的那一条也一起亮了 —— 解锁哪一步，才讲哪一步的道理。</p>',
+      actions: [{ label: goLv, value: lv, cls: 'primary' }, { label: '先不了', value: null, cls: 'ghost' }]
+    }).then(function (v) {
+      if (v === 3) go('rsip'); else if (v === 4) go('wins');
+    });
+  }
+
   /* ==================== 启动 ==================== */
   function renderAll() {
     renderSeat(); renderChain(); renderSession(); renderAux();
     renderVerdicts(); renderLib(); renderTree(); renderTreeMeta(); renderParents();
     renderFreeze(); renderWins(); renderOverview(); renderGains();
+    renderLadder(); applyLocks();
   }
 
   load();

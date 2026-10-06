@@ -41,8 +41,8 @@
   <div class="wrap tabs-in">
     <button class="tab on" data-tab="model">原理 · 模型</button>
     <button class="tab" data-tab="ctdp">点火 · CTDP</button>
-    <button class="tab" data-tab="rsip">国策 · RSIP</button>
-    <button class="tab" data-tab="wins">复盘 · 赢麻了</button>
+    <button class="tab" data-tab="rsip" data-lv="3">国策 · RSIP</button>
+    <button class="tab" data-tab="wins" data-lv="4">复盘 · 赢麻了</button>
     <button class="tab" data-tab="about">关于</button>
   </div>
 </nav>
@@ -111,12 +111,12 @@
         <h3 class="sub">CTDP · 链式时延协议</h3>
         <p class="hint">解决微观：启动难、易分心、破窗效应。</p>
         <ul class="rules">
-          <li><b>神圣座位原理</b> —— 指定一个标志物，一旦触发就必须以最好的状态专注；成功记一个节点 #1 #2 #3…，链条越长约束力越强。</li>
-          <li><b>下必为例原理</b> —— 违规只有两个选项：整条链清零，或从此永久允许该行为。没有"这次算了"。</li>
-          <li><b>线性时延原理</b> —— 不要求"立刻开始"，只要求"15 分钟后开始"，把决策点移到贴现曲线更平缓的位置。</li>
+          <li data-lv="1"><b>神圣座位原理</b> —— 指定一个标志物，一旦触发就必须以最好的状态专注；成功记一个节点 #1 #2 #3…，链条越长约束力越强。</li>
+          <li data-lv="1"><b>下必为例原理</b> —— 违规只有两个选项：整条链清零，或从此永久允许该行为。没有"这次算了"。</li>
+          <li data-lv="2"><b>线性时延原理</b> —— 不要求"立刻开始"，只要求"15 分钟后开始"，把决策点移到贴现曲线更平缓的位置。</li>
         </ul>
       </div>
-      <div class="card">
+      <div class="card" data-lv="3">
         <div class="kicker">Gen 2</div>
         <h3 class="sub">RSIP · 递归稳态迭代协议</h3>
         <p class="hint">解决宏观：稳态顽固、习惯难改、崩塌后摆烂。</p>
@@ -129,6 +129,21 @@
         </ol>
       </div>
     </div>
+
+    <div class="card" data-lv="4">
+      <div class="card-head">
+        <div>
+          <div class="kicker">Gen 2 · 容错与复盘</div>
+          <h3 class="sub">链条长到怕断的时候，才讲这两条</h3>
+          <p class="hint">它们不是"技巧"，是补救机制 —— 正因为前面那两步已经立住了，它们才有意义。</p>
+        </div>
+      </div>
+      <ul class="rules">
+        <li><b>水密隔舱原理</b> —— 生病、出差、突发状况是真实的。与其让整棵树因为一次意外全线崩塌，不如只冻结受影响的隔舱；但冻结到期当天必须一次性重新满足全部被冻结的国策，否则它们照规则熄灭。舱只是暂停，不算断链。</li>
+        <li><b>赢麻了原理</b> —— 把"写感恩日记"改造成一条国策：当天发生的任何好事都算一条喜报，晚上用最大的那条给这一天<b>命名</b>并定级。它不解决执行力，它解决的是"我什么都没做成"这种失真的体感。</li>
+        <li><b>储君继承制</b> —— 预设替代方案，防止链条因为一次意外整体崩溃。本站把它落成了一层薄护盾：连续七块攒一层，最多两层。断链时可以用一层换"链条保住"，但那一段会永久留一道裂。</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ============ 2. CTDP ============ -->
@@ -136,6 +151,16 @@
     <div class="kicker">Part 1 · CTDP</div>
     <h2 class="sec">点火台 · 链式时延协议</h2>
     <p class="lede">第一代协议只管一件事：把"现在就开始"这件难事，变成"已经开始了"这件不需要意志力的事。它由两条平行的链组成 —— <b>主链</b>用神圣座位锁定专注，<b>辅助链</b>用一个几乎零成本的信号把自己推向座位。两条链都严格适用<b>下必为例</b>：违规时只有"清零"或"永久允许"两个出口，没有第三种。</p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">解锁阶梯</h3>
+          <p class="hint">这一版不一次把两代协议全给你。链条推到哪一格，才开哪一格 —— 连它背后的原理一起。台阶只上不下，断链归零也不会把已经开的格子收回去。</p>
+        </div>
+      </div>
+      <div class="ladder" id="ladder"></div>
+    </div>
 
     <div class="card">
       <div class="card-head">
@@ -155,17 +180,30 @@
       <div class="card">
         <div class="card-head">
           <div>
-            <h3 class="sub">二、主链（任务链）</h3>
-            <p class="hint">每成功专注一次，链条加一个节点。</p>
+            <h3 class="sub">二、主链 · 创世纪方块</h3>
+            <p class="hint">每成功专注一次，链条加一块。方块首尾相接往上垒 —— <b>高度就是数量，没有表格</b>。一天最多一块主块：限量的东西才有人怕失去它。点任意一块，看它刻的是什么。</p>
           </div>
         </div>
-        <div class="chain-big">
-          <span class="chain-mark">#</span><span class="num" id="main-count">0</span>
+        <div class="stage">
+          <div class="pillar" id="pillar"></div>
+          <div class="ground"></div>
+          <div class="plinth-stats">
+            <span>本柱 <b class="num" id="main-count">0</b></span>
+            <span>历史最长 <b class="num" id="stat-best">0</b></span>
+            <span>今日 <b class="num" id="stat-today">0</b></span>
+            <span>累计 <b class="num" id="stat-total">0</b></span>
+            <span class="shield-off" id="shield-slot">护盾 —</span>
+          </div>
         </div>
-        <div class="stats">
-          <div><b class="num" id="stat-best">0</b><span>历史最长</span></div>
-          <div><b class="num" id="stat-today">0</b><span>今日节点</span></div>
-          <div><b class="num" id="stat-total">0</b><span>累计节点</span></div>
+        <p class="stage-note" id="stage-note">柱高就是数量，<b>没有表格</b>。</p>
+        <div class="epitaph hidden" id="epitaph"></div>
+        <div class="row hidden" id="carve-row">
+          <input type="text" id="carve-input" class="grow" maxlength="4" placeholder="给刚落的这块刻 1–4 字，如「夜读」">
+          <button class="btn" id="btn-carve">刻上</button>
+        </div>
+        <div class="relief-wrap">
+          <p class="hint">遗迹 —— 每断一次链，这里就多一根断柱。<b>方块不消失，断柱永不删除</b>：一年后还在，刻着日期和当时的高度。你断过几次、每次多快重开，一眼就是一部履历。</p>
+          <div class="relief" id="relief"></div>
         </div>
         <div class="row">
           <label class="fld compact">
@@ -200,7 +238,7 @@
         <div class="log" id="main-log"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-lv="2">
         <div class="card-head">
           <div>
             <h3 class="sub">三、辅助链（预约链）</h3>
@@ -236,7 +274,7 @@
   </section>
 
   <!-- ============ 3. RSIP ============ -->
-  <section class="page" id="page-rsip">
+  <section class="page" id="page-rsip" data-lv="3">
     <div class="kicker">Part 2 · RSIP</div>
     <h2 class="sec">国策树 · 递归稳态迭代协议</h2>
     <p class="lede">第二代协议承认一件事：在宏观负面稳态面前，微观的意志力几乎可以忽略。所以它不再硬碰硬，而是去改<b>边界条件</b> —— 找到每个负面状态背后的<b>有效干预节点</b>，在那里放一条带杠杆的<b>定式</b>，然后把定式组织成一棵会自己修剪的树。<b>每天最多加一个节点；节点失败，它整棵子树一起熄灭。</b></p>
@@ -263,7 +301,7 @@
       </details>
     </div>
 
-    <div class="card">
+    <div class="card" data-lv="4">
       <div class="card-head">
         <div>
           <h3 class="sub">二、水密隔舱（不可抗力冻结）</h3>
@@ -293,7 +331,7 @@
     </div>
   </section>
   <!-- ============ 4. 赢麻了 ============ -->
-  <section class="page" id="page-wins">
+  <section class="page" id="page-wins" data-lv="4">
     <div class="kicker">Part 3 · Debrief</div>
     <h2 class="sec">复盘 · 赢麻了</h2>
     <p class="lede">原文把"写感恩日记"这条鸡汤改造成了一个国策：<b>【赢麻了】</b> —— 当天完成的任何任务、发生的任何好事都算一条<b>喜报</b>，晚上用最大的那条喜报给这一天命名，最后定级为小赢 / 中赢 / 大赢。它不解决执行力，它解决的是"我什么都没做成"这种失真的体感。</p>
@@ -359,6 +397,16 @@
         <button class="btn danger-ghost" id="btn-wipe">清空全部记录</button>
         <input type="file" id="import-file" accept="application/json" class="hidden">
       </div>
+      <div class="mini-wrap">
+        <div>
+          <div class="mini-col" id="ov-mini"></div>
+          <span class="mini-cap" id="ov-mini-cap">当前柱 · 0</span>
+        </div>
+        <div>
+          <div class="mini-relief" id="ov-ruins"></div>
+          <span class="mini-cap" id="ov-ruins-cap">遗迹 · 0 根断柱</span>
+        </div>
+      </div>
       <div class="stats">
         <div><b class="num" id="ov-nodes">0</b><span>国策节点</span></div>
         <div><b class="num" id="ov-chain">0</b><span>主链节点</span></div>
@@ -388,6 +436,5 @@
 </div>
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script src="app.js"></script>
 </body>
 </html>
