@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>链与树 · CTDP × RSIP 自控工程台</title>
+<meta name="description" content="把自制力当成工程问题：双曲贴现模型的交互演示，以及第一代协议 CTDP（神圣座位·下必为例·线性时延）与第二代协议 RSIP（定式·国策树·递归回溯）的落地工具。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23191c20'/%3E%3Ccircle cx='9' cy='9' r='2.3' fill='%23d8a45c'/%3E%3Ccircle cx='9' cy='16' r='2.3' fill='%23d8a45c'/%3E%3Ccircle cx='9' cy='23' r='2.3' fill='%23d8a45c'/%3E%3Cpath d='M9 9h5M9 16h5M9 23h5M14 9v14M14 16h7' stroke='%23d8a45c' stroke-width='1.5' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="9" cy="9" r="2.6" fill="var(--brand)"/>
+        <circle cx="9" cy="16" r="2.6" fill="var(--brand)"/>
+        <circle cx="9" cy="23" r="2.6" fill="var(--brand)" opacity=".5"/>
+        <path d="M9 9h5M9 16h5M9 23h5M14 9v14M14 16h7" stroke="var(--brand)" stroke-width="1.5" fill="none" opacity=".85"/>
+        <circle cx="23" cy="16" r="2.6" fill="var(--cool)"/>
+      </svg>
+      <b>链与树</b>
+      <span>CTDP × RSIP 自控工程台</span>
+    </div>
+    <div class="theme-seg" role="group" aria-label="主题">
+      <button class="icon-btn" data-theme-set="light" title="白天" aria-label="白天主题">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <button class="icon-btn" data-theme-set="dark" title="黑夜" aria-label="黑夜主题">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+      </button>
+      <button class="icon-btn" data-theme-set="auto" title="跟随系统" aria-label="跟随系统主题">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap tabs-in">
+    <button class="tab on" data-tab="model">原理 · 模型</button>
+    <button class="tab" data-tab="ctdp">点火 · CTDP</button>
+    <button class="tab" data-tab="rsip">国策 · RSIP</button>
+    <button class="tab" data-tab="wins">复盘 · 赢麻了</button>
+    <button class="tab" data-tab="about">关于</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- ============ 1. 原理 ============ -->
+  <section class="page on" id="page-model">
+    <div class="kicker">Part 0 · The Model</div>
+    <h2 class="sec">自制力的 toy model</h2>
+    <p class="lede">晚上七点，桌上摊着作业，手机屏幕亮了。几乎所有人都知道哪种选择更"正确"，可几乎所有人都会去刷手机。原文给出的解释不是"意志薄弱"，而是一个积分：<b>I = ∫ V(τ)·W(τ) dτ</b> —— 行为倾向等于「这件事在各时刻的价值」乘以「你对那个时刻的重视程度」，再累加。大脑的 W(τ) 极度短视，于是刷手机在近端的高权重区占了大便宜。</p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">拖动滑块，看积分什么时候翻转</h3>
+          <p class="hint">k 是短视系数：k 越大，W(τ) 衰减越快，你越只在乎"现在"。曲线是同一个模型换参数算出来的，不是实测数据。</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <canvas id="chart" height="300"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--danger)"></i>刷手机 V(τ)</span>
+            <span><i style="background:var(--ok)"></i>专注学习 V(τ)</span>
+            <span><i style="background:var(--ink3)"></i>权重 W(τ)</span>
+          </div>
+        </div>
+        <div class="side">
+          <label class="fld">
+            <span>短视系数 k <b class="num" id="k-val">3.20</b></span>
+            <input type="range" id="k-slider" min="-1.7" max="1.0" step="0.01" value="0.505">
+          </label>
+          <label class="fld">
+            <span>时间跨度 <b class="num" id="tmax-val">24 h</b></span>
+            <input type="range" id="tmax-slider" min="4" max="24" step="1" value="24">
+          </label>
+          <label class="chk">
+            <input type="checkbox" id="pomo-toggle">
+            <span>启用「非线性压缩」（番茄钟机制示意）</span>
+          </label>
+          <div class="readout">
+            <div class="ro-row"><span>I(刷手机)</span><b class="num" id="ro-play">—</b></div>
+            <div class="ro-row"><span>I(专注)</span><b class="num" id="ro-study">—</b></div>
+            <div class="ro-row big"><span>倾向比</span><b class="num" id="ro-ratio">—</b></div>
+          </div>
+          <div class="verdict" id="verdict">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">为什么大部分"自控方法"没用：它们没打在权重高的地方</h3>
+          <p class="hint">用增益 G 衡量一个方法对理性决策倾向的放大倍数。下面标出每种方法实际改动了 V(τ) 的哪一段。</p>
+        </div>
+      </div>
+      <div class="gain-list" id="gain-list"></div>
+      <p class="note">结论很反直觉：<b>远期奖励 / 远期惩罚</b>都作用在 τ 很大、W(τ) 已经接近 0 的位置，所以再用力也几乎不改动积分；<b>近期惩罚</b>（锁手机、找人监督）有效但有限；真正有用的是能作用于近端、并且带<b>非线性压缩</b>的方法——这正是 CTDP 全部套路的来源。</p>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="kicker">Gen 1</div>
+        <h3 class="sub">CTDP · 链式时延协议</h3>
+        <p class="hint">解决微观：启动难、易分心、破窗效应。</p>
+        <ul class="rules">
+          <li><b>神圣座位原理</b> —— 指定一个标志物，一旦触发就必须以最好的状态专注；成功记一个节点 #1 #2 #3…，链条越长约束力越强。</li>
+          <li><b>下必为例原理</b> —— 违规只有两个选项：整条链清零，或从此永久允许该行为。没有"这次算了"。</li>
+          <li><b>线性时延原理</b> —— 不要求"立刻开始"，只要求"15 分钟后开始"，把决策点移到贴现曲线更平缓的位置。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="kicker">Gen 2</div>
+        <h3 class="sub">RSIP · 递归稳态迭代协议</h3>
+        <p class="hint">解决宏观：稳态顽固、习惯难改、崩塌后摆烂。</p>
+        <ol class="steps">
+          <li>微观涨落打不过宏观稳态，别在稳态内部死磕。</li>
+          <li>任何负面稳态都能回溯到一个<b>有效干预节点</b>。</li>
+          <li>在该节点上用<b>定式</b>（带杠杆的局部最优解）放大自由意志。</li>
+          <li>把定式组织成<b>国策树</b>：每天最多加一个。</li>
+          <li>节点失败就<b>递归熄灭它整棵子树</b>，系统整体回滚。</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. CTDP ============ -->
+  <section class="page" id="page-ctdp">
+    <div class="kicker">Part 1 · CTDP</div>
+    <h2 class="sec">点火台 · 链式时延协议</h2>
+    <p class="lede">第一代协议只管一件事：把"现在就开始"这件难事，变成"已经开始了"这件不需要意志力的事。它由两条平行的链组成 —— <b>主链</b>用神圣座位锁定专注，<b>辅助链</b>用一个几乎零成本的信号把自己推向座位。两条链都严格适用<b>下必为例</b>：违规时只有"清零"或"永久允许"两个出口，没有第三种。</p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">一、神圣座位</h3>
+          <p class="hint">它不必是一把椅子。任何看得见摸得着、容易区分的标志都行：一顶帽子、一支笔、给微信小号发的一条消息。要点是——一旦触发，就必须以最好的状态完成一次专注。</p>
+        </div>
+      </div>
+      <div class="row">
+        <input type="text" id="seat-input" class="grow" maxlength="60" placeholder="例如：深呼吸三次后戴上蓝色帽子">
+        <button class="btn primary" id="btn-save-seat">锁定仪式</button>
+      </div>
+      <p class="note" id="seat-note">还没有设定标志物。没有标志物，链条就没有锚点。</p>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3 class="sub">二、主链（任务链）</h3>
+            <p class="hint">每成功专注一次，链条加一个节点。</p>
+          </div>
+        </div>
+        <div class="chain-big">
+          <span class="chain-mark">#</span><span class="num" id="main-count">0</span>
+        </div>
+        <div class="stats">
+          <div><b class="num" id="stat-best">0</b><span>历史最长</span></div>
+          <div><b class="num" id="stat-today">0</b><span>今日节点</span></div>
+          <div><b class="num" id="stat-total">0</b><span>累计节点</span></div>
+        </div>
+        <div class="row">
+          <label class="fld compact">
+            <span>时长</span>
+            <select id="dur-select">
+              <option value="25">25 分钟</option>
+              <option value="45">45 分钟</option>
+              <option value="60" selected>60 分钟</option>
+              <option value="90">90 分钟</option>
+            </select>
+          </label>
+          <label class="fld compact">
+            <span>兵种</span>
+            <select id="unit-select">
+              <option value="突击单元">突击单元 · 学习/攻坚</option>
+              <option value="侦查单元">侦查单元 · 信息搜集</option>
+              <option value="指挥单元">指挥单元 · 制定计划</option>
+              <option value="特勤单元">特勤单元 · 处理杂事</option>
+              <option value="工程单元">工程单元 · 运动/身体</option>
+            </select>
+          </label>
+        </div>
+        <div id="session-box" class="session hidden">
+          <div class="session-timer num" id="session-timer">00:00</div>
+          <p class="hint" id="session-hint">专注中。中途做任何与"最好的状态"不符的事，都必须当场判决。</p>
+          <div class="row">
+            <button class="btn ok" id="btn-finish">最好的状态 · 完成</button>
+            <button class="btn danger-ghost" id="btn-violate">这不算最好的状态</button>
+          </div>
+        </div>
+        <button class="btn primary block" id="btn-start-session">触发标志 · 开始一次专注</button>
+        <div class="log" id="main-log"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3 class="sub">三、辅助链（预约链）</h3>
+            <p class="hint">坐不下去的时候用它。先只承诺一个极低成本的信号，15 分钟后再被推上主链。</p>
+          </div>
+        </div>
+        <div class="chain-big small">
+          <span class="chain-mark">#</span><span class="num" id="aux-count">0</span>
+        </div>
+        <div id="aux-box" class="session hidden">
+          <div class="session-timer num" id="aux-timer">15:00</div>
+          <p class="hint">预约生效中 —— 在这 15 分钟内去触发神圣座位。</p>
+          <div class="row">
+            <button class="btn ok" id="btn-aux-done">已触发标志</button>
+            <button class="btn danger-ghost" id="btn-aux-fail">超时没做到</button>
+          </div>
+        </div>
+        <button class="btn block" id="btn-aux">打响指 · 预约 15 分钟后开始</button>
+        <p class="note">辅助链的价值不在"提醒"，而在于它把启动的阈值分成了两段：承诺一个响指很容易，而在信号已经发出之后，未来的那条链会在当下凝成一根撞针。<br>（原文里作者就吃过一次苦头：半夜不小心打了个响指，只能凌晨三点爬起来学了一小时。）</p>
+        <div class="log" id="aux-log"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">四、判例簿（下必为例）</h3>
+          <p class="hint">每次选择"永久允许"，就往这里加一条判例。判例会如实降低链条的约束力 —— 这也是为什么它需要被记下来，而不是悄悄忘掉。</p>
+        </div>
+      </div>
+      <div class="log" id="verdict-log"></div>
+    </div>
+  </section>
+
+  <!-- ============ 3. RSIP ============ -->
+  <section class="page" id="page-rsip">
+    <div class="kicker">Part 2 · RSIP</div>
+    <h2 class="sec">国策树 · 递归稳态迭代协议</h2>
+    <p class="lede">第二代协议承认一件事：在宏观负面稳态面前，微观的意志力几乎可以忽略。所以它不再硬碰硬，而是去改<b>边界条件</b> —— 找到每个负面状态背后的<b>有效干预节点</b>，在那里放一条带杠杆的<b>定式</b>，然后把定式组织成一棵会自己修剪的树。<b>每天最多加一个节点；节点失败，它整棵子树一起熄灭。</b></p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">一、今天种哪一条？</h3>
+          <p class="hint">下面是原文里出现过的定式，每条都标了它借的是哪股力量。挑一条最容易维持的 —— 越容易活下来，它越会往根部长。</p>
+        </div>
+        <span class="pill" id="add-status">今日可添加：1 条</span>
+      </div>
+      <div class="lib" id="doctrine-lib"></div>
+      <details class="more">
+        <summary>自定义一条国策</summary>
+        <div class="row">
+          <input type="text" id="custom-name" class="grow" maxlength="40" placeholder="国策名，如「进门先换鞋」">
+          <select id="parent-select"><option value="">挂到：新建一个根分支</option></select>
+        </div>
+        <div class="row">
+          <input type="text" id="custom-desc" class="grow" maxlength="90" placeholder="一句话说清它挡住的是哪个负面状态">
+          <button class="btn primary" id="btn-custom-add">种下</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">二、水密隔舱（不可抗力冻结）</h3>
+          <p class="hint">生病、出差、突发状况是真实的。与其让整棵树因为一次意外全线崩塌，不如只冻结受影响的隔舱 —— 但冻结到期当天，必须一次性重新满足所有被冻结的国策，否则它们照规则熄灭。</p>
+        </div>
+        <span class="pill" id="freeze-status">未启用</span>
+      </div>
+      <div class="row">
+        <label class="fld compact">
+          <span>冻结至</span>
+          <input type="date" id="freeze-until">
+        </label>
+        <button class="btn" id="btn-freeze-start">申请冻结</button>
+        <button class="btn ghost hidden" id="btn-freeze-end">提前解冻结算</button>
+      </div>
+      <div class="freeze-picker" id="freeze-picker"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">三、国策树</h3>
+          <p class="hint">往根部长的都是些鸡毛蒜皮的小规则 —— 原文作者的一号根节点是「在家吃完饭后必须尽快洗碗」。越靠近根部，失败代价越大，因此被保护得越好。</p>
+        </div>
+      </div>
+      <div class="tree" id="tree"></div>
+    </div>
+  </section>
+  <!-- ============ 4. 赢麻了 ============ -->
+  <section class="page" id="page-wins">
+    <div class="kicker">Part 3 · Debrief</div>
+    <h2 class="sec">复盘 · 赢麻了</h2>
+    <p class="lede">原文把"写感恩日记"这条鸡汤改造成了一个国策：<b>【赢麻了】</b> —— 当天完成的任何任务、发生的任何好事都算一条<b>喜报</b>，晚上用最大的那条喜报给这一天命名，最后定级为小赢 / 中赢 / 大赢。它不解决执行力，它解决的是"我什么都没做成"这种失真的体感。</p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">今日喜报</h3>
+          <p class="hint" id="wins-date">—</p>
+        </div>
+        <span class="pill" id="wins-count">0 条</span>
+      </div>
+      <div class="row">
+        <input type="text" id="win-input" class="grow" maxlength="80" placeholder="哪怕只是「把碗洗了」，也写下来">
+        <button class="btn primary" id="btn-win-add">记下</button>
+      </div>
+      <div class="log" id="win-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="sub">给今天命名</h3>
+          <p class="hint">用今天最大的那条喜报命名这一天。命名之后就不要再改了 —— 这是判例，不是备忘录。</p>
+        </div>
+      </div>
+      <div class="row">
+        <input type="text" id="win-title" class="grow" maxlength="30" placeholder="如：炖鸡汤大成功日">
+      </div>
+      <div class="row level-row" id="level-row">
+        <button class="btn level" data-level="小赢">小赢</button>
+        <button class="btn level" data-level="中赢">中赢</button>
+        <button class="btn level" data-level="大赢">大赢</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3 class="sub">往日战报</h3></div>
+      <div class="log" id="win-history"></div>
+    </div>
+  </section>
+
+  <!-- ============ 5. 关于 ============ -->
+  <section class="page" id="page-about">
+    <div class="kicker">About</div>
+    <h2 class="sec">关于这个站</h2>
+    <div class="card">
+      <p>这是一个把《自制力问题的两代自控技术：链式时延协议（CTDP）与递归稳态迭代协议（RSIP）》的原理做成可操作界面的试水站。三个模块分别对应原文的三层：</p>
+      <ul class="rules">
+        <li><b>原理 · 模型</b> —— 原文第 2、4 节的双曲贴现积分模型与"增益 G"分析，做成可拖动的直观演示。</li>
+        <li><b>点火 · CTDP</b> —— 原文第 10 节的双链结构（主链记录节点、辅助链预约 15 分钟）与第 8 节的"下必为例"判决。</li>
+        <li><b>国策 · RSIP</b> —— 原文第 21 节的递归回溯两条规则（每天最多加一个 / 失败递归熄灭子树），加上第 22、23 节的定式实例与容错机制。</li>
+      </ul>
+      <p class="note"><b>原文</b>：作者 edmond，知乎《如何提高自制力？》<a href="https://www.zhihu.com/question/19888447/answer/1930799480401293785" target="_blank" rel="noopener">原回答链接</a>。作者声明以类 MIT 许可开放，可自由使用改编，<b>只需注明原作者</b>。本站的一切机制解释均来自该文，界面与代码为本站原创。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3 class="sub">数据在这儿，是你自己的</h3></div>
+      <p class="hint">所有记录只写在这台设备的浏览器本地存储里，不上传任何服务器。换设备或想留底，用下面的导出。</p>
+      <div class="row">
+        <button class="btn" id="btn-export">导出记录（JSON）</button>
+        <button class="btn" id="btn-import">导入记录</button>
+        <button class="btn danger-ghost" id="btn-wipe">清空全部记录</button>
+        <input type="file" id="import-file" accept="application/json" class="hidden">
+      </div>
+      <div class="stats">
+        <div><b class="num" id="ov-nodes">0</b><span>国策节点</span></div>
+        <div><b class="num" id="ov-chain">0</b><span>主链节点</span></div>
+        <div><b class="num" id="ov-days">0</b><span>有记录的天数</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3 class="sub">第一次用，建议这样开始</h3></div>
+      <ol class="steps">
+        <li>去<b>原理</b>页把 k 从右往左拉一遍，亲眼看见积分翻转 —— 你要相信的是它，不是我。</li>
+        <li>去<b>点火</b>页设一个真正独一无二的标志物，越小越好，最好今天就能用。</li>
+        <li>先只用辅助链：打响指，15 分钟内坐到座位上。第一次成功比什么都重要。</li>
+        <li>去<b>国策</b>页挑一条最没难度的定式种下，比如「在家吃完饭后必须尽快洗碗」。</li>
+        <li>之后每天最多加一条。哪条破了，就大方地把它和它下面的子树一起熄灭 —— 崩塌是调试，不是失败。</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<div class="modal-mask hidden" id="modal-mask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title">确认</h3>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
